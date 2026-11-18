@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background-color: #07131e;
+    color: #fcfaf5;
+  }
+
+  /* Custom Luxury Golden Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #06111b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2d8ec8, #dab87b);
+    border-radius: 9999px;
+  }
+}
+
+/* Subtle cinematic film grain overlay */
+.film-grain {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0);
+  background-size: 24px 24px;
+}
