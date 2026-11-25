@@ -306,8 +306,8 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
         />
       </mesh>
 
-      {/* Extended White Limewashed Villa Courtyard Wings Left & Right so wall spans full horizon */}
-      <mesh position={[-7.8, 3.05, -0.08]} castShadow receiveShadow>
+      {/* Extended White Limewashed Villa Courtyard Wings Left, Right & Upper Parapet so wall spans full viewport */}
+      <mesh position={[-7.8, 3.05, -0.08]} onClick={blockOutsideWallClick} castShadow receiveShadow>
         <boxGeometry args={[9.4, 7.6, 0.5]} />
         <meshStandardMaterial
           map={pbr.whiteStuccoColor}
@@ -317,8 +317,18 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
           roughness={0.85}
         />
       </mesh>
-      <mesh position={[7.8, 3.05, -0.08]} castShadow receiveShadow>
+      <mesh position={[7.8, 3.05, -0.08]} onClick={blockOutsideWallClick} castShadow receiveShadow>
         <boxGeometry args={[9.4, 7.6, 0.5]} />
+        <meshStandardMaterial
+          map={pbr.whiteStuccoColor}
+          bumpMap={pbr.whiteStuccoBump}
+          bumpScale={0.03}
+          color="#faf6ee"
+          roughness={0.85}
+        />
+      </mesh>
+      <mesh position={[0, 8.85, -0.08]} onClick={blockOutsideWallClick} receiveShadow>
+        <boxGeometry args={[25.0, 4.0, 0.5]} />
         <meshStandardMaterial
           map={pbr.whiteStuccoColor}
           bumpMap={pbr.whiteStuccoBump}
@@ -551,25 +561,6 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
           />
         </mesh>
       </group>
-
-      {/* ================================================================= */}
-      {/* VOLUMETRIC GOLDEN SUNLIGHT STREAMING THROUGH OPENING DOORS        */}
-      {/* ================================================================= */}
-      <mesh
-        ref={sunShaftRef}
-        position={[0, 2.5, 0.6]}
-        rotation={[0.22, 0, 0]}
-      >
-        <coneGeometry args={[2.3, 6.5, 24, 1, true]} />
-        <meshBasicMaterial
-          color="#ffe6a3"
-          transparent
-          opacity={0}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
     </group>
   );
 };

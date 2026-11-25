@@ -42,8 +42,6 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
   const ambientLightRef = useRef<THREE.AmbientLight>(null);
   const petalsInstancedRef = useRef<THREE.InstancedMesh>(null);
   const floatingLanternsRef = useRef<THREE.Group>(null);
-  const sunSphereRef = useRef<THREE.Mesh>(null);
-  const sunGlowRef = useRef<THREE.Mesh>(null);
 
   // Smooth camera state vectors
   const currentCamPos = useRef(new THREE.Vector3(0, 2.55, 25.2));
@@ -137,14 +135,6 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
       const ambSunset = new THREE.Color('#8c586a');
       ambientLightRef.current.color.lerpColors(ambDay, ambSunset, sunsetMix);
       ambientLightRef.current.intensity = THREE.MathUtils.lerp(1.05, 0.78, sunsetMix);
-    }
-
-    if (sunSphereRef.current && sunGlowRef.current) {
-      sunSphereRef.current.position.set(sunX * 1.6, sunY * 1.15, -72);
-      sunGlowRef.current.position.set(sunX * 1.6, sunY * 1.15, -72.5);
-      const sScale = 1 + sunsetMix * 0.55;
-      sunSphereRef.current.scale.setScalar(sScale);
-      sunGlowRef.current.scale.setScalar(sScale * 2.6);
     }
 
     // Animate Floating Rose Petals & Sunlight Pollen
@@ -369,22 +359,6 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
         fade
         speed={0.6}
       />
-
-      {/* Glowing Golden Horizon Sun Disc & Atmospheric Halo over the Ocean */}
-      <mesh ref={sunSphereRef} position={[6, 9, -72]}>
-        <sphereGeometry args={[3.4, 32, 32]} />
-        <meshBasicMaterial color="#ffe49e" />
-      </mesh>
-      <mesh ref={sunGlowRef} position={[6, 9, -72.5]}>
-        <circleGeometry args={[7.5, 32]} />
-        <meshBasicMaterial
-          color="#ffaa55"
-          transparent
-          opacity={0.28}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
 
       {/* Main Sunlight & Ambient Illumination */}
       <ambientLight ref={ambientLightRef} intensity={1.05} color="#e8f4fc" />
