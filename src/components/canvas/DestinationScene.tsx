@@ -1,11 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
-import { Sky, Stars } from '@react-three/drei';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { BlueDoorEntrance } from './BlueDoorEntrance';
-import { WeddingAisleSection } from './WeddingAisleSection';
-import { MainWeddingStage } from './MainWeddingStage';
-import { createOceanShaderMaterial } from './shaders/OceanShader';
 import { CameraPresetId } from '../../types/wedding';
 
 interface DestinationSceneProps {
@@ -20,6 +16,83 @@ interface DestinationSceneProps {
   cameraPreset: CameraPresetId;
   timeOfDayOverride: 'auto' | 'afternoon' | 'golden-hour' | 'twilight';
   onTouchDoor?: () => void;
+}
+
+// Custom GLSL Living Photorealistic 3D Depth & Breeze/Water Shimmer Shader
+const photorealStageVertexShader = /* glsl */ `
+  uniform float uTime;
+  uniform float uParallaxStrength;
+  uniform vec2 uPointer;
+  varying vec2 vUv;
+
+  void main() {
+    vUv = uv;
+    vec3 pos = position;
+
+    // Subtle 3D radial depth curve so the photograph wraps around the viewer in 3D space
+    float distFromCenter = (uv.x - 0.5) * 2.0;
+    pos.z += (1.0 - distFromCenter * distFromCenter) * -0.85;
+
+    // Gentle organic 3D breathing & pointer parallax displacement
+    pos.x += uPointer.x * uParallaxStrength * (1.0 - abs(distFromCenter) * 0.4);
+    pos.y += uPointer.y * uParallaxStrength * 0.5;
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+  }
+`;
+
+const photorealStageFragmentShader = /* glsl */ `
+  uniform sampler2D uMap;
+  uniform float uTime;
+  uniform float uOpacity;
+  uniform float uWaterShimmer;
+  uniform float uWarmth;
+  varying vec2 vUv;
+
+  void main() {
+    vec2 uv = vUv;
+
+    // Subtle living breeze & ocean ripple displacement on lower/water regions
+    if (uWaterShimmer > 0.01) {
+      float waveMask = smoothstep(0.58, 0.15, uv.y);
+      float rippleX = sin(uv.y * 38.0 + uTime * 1.8) * 0.0018 * waveMask * uWaterShimmer;
+      float rippleY = cos(uv.x * 28.0 + uTime * 1.4) * 0.0012 * waveMask * uWaterShimmer;
+      uv += vec2(rippleX, rippleY);
+    }
+
+    // Subtle foliage breeze in upper corners
+    float foliageMask = smoothstep(0.55, 0.95, uv.y) * smoothstep(0.15, 0.48, abs(uv.x - 0.5));
+    uv.x += sin(uTime * 1.3 + uv.y * 12.0) * 0.0012 * foliageMask;
+
+    vec4 texColor = texture2D(uMap, clamp(uv, 0.002, 0.998));
+
+    // Dynamic golden-hour warmth grading
+    vec3 warmTint = mix(vec3(1.0), vec3(1.06, 0.97, 0.90), uWarmth);
+    vec3 finalRgb = texColor.rgb * warmTint;
+
+    gl_FragColor = vec4(finalRgb, texColor.a * uOpacity);
+  }
+`;
+
+function createPhotorealStageMaterial(
+  texture: THREE.Texture,
+  waterShimmer: number
+) {
+  return new THREE.ShaderMaterial({
+    vertexShader: photorealStageVertexShader,
+    fragmentShader: photorealStageFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uMap: { value: texture },
+      uTime: { value: 0 },
+      uOpacity: { value: 1 },
+      uWaterShimmer: { value: waterShimmer },
+      uWarmth: { value: 0 },
+      uParallaxStrength: { value: 0.35 },
+      uPointer: { value: new THREE.Vector2(0, 0) },
+    },
+  });
 }
 
 export const DestinationScene: React.FC<DestinationSceneProps> = ({
@@ -37,158 +110,134 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
 }) => {
   const { camera, pointer } = useThree();
 
-  const oceanMat = useMemo(() => createOceanShaderMaterial(), []);
-  const dirLightRef = useRef<THREE.DirectionalLight>(null);
-  const ambientLightRef = useRef<THREE.AmbientLight>(null);
-  const petalsInstancedRef = useRef<THREE.InstancedMesh>(null);
-  const floatingLanternsRef = useRef<THREE.Group>(null);
+  // Load real 8K destination wedding photographs into 3D WebGL space
+  const [aisleTex, stageTex, droneTex, sunsetTex] = useLoader(
+    THREE.TextureLoader,
+    [
+      './assets/images/wedding-aisle-env.jpg',
+      './assets/images/wedding-stage-ocean.jpg',
+      './assets/images/aerial-drone-coast.jpg',
+      './assets/images/sunset-beach-finale.jpg',
+    ]
+  );
+
+  useMemo(() => {
+    [aisleTex, stageTex, droneTex, sunsetTex].forEach((t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 16;
+    });
+  }, [aisleTex, stageTex, droneTex, sunsetTex]);
+
+  const aisleMat = useMemo(
+    () => createPhotorealStageMaterial(aisleTex, 0.5),
+    [aisleTex]
+  );
+  const stageMat = useMemo(
+    () => createPhotorealStageMaterial(stageTex, 1.0),
+    [stageTex]
+  );
+  const droneMat = useMemo(
+    () => createPhotorealStageMaterial(droneTex, 1.0),
+    [droneTex]
+  );
+  const sunsetMat = useMemo(
+    () => createPhotorealStageMaterial(sunsetTex, 1.0),
+    [sunsetTex]
+  );
 
   // Smooth camera state vectors
-  const currentCamPos = useRef(new THREE.Vector3(0, 2.55, 25.2));
-  const currentLookAt = useRef(new THREE.Vector3(0, 2.55, 18.0));
-  const targetCamPos = useRef(new THREE.Vector3(0, 2.55, 25.2));
-  const targetLookAt = useRef(new THREE.Vector3(0, 2.55, 18.0));
-
-  // 160 Floating White Rose Petals & Golden Sunlight Pollen Particles
-  const petalCount = 160;
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  const petalData = useMemo(() => {
-    return Array.from({ length: petalCount }).map(() => ({
-      x: (Math.random() - 0.5) * 24,
-      y: 0.4 + Math.random() * 8.5,
-      z: -14 + Math.random() * 38,
-      speedY: 0.14 + Math.random() * 0.22,
-      driftX: 0.25 + Math.random() * 0.45,
-      rotSpeed: 0.6 + Math.random() * 1.4,
-      phase: Math.random() * Math.PI * 2,
-      scale: 0.035 + Math.random() * 0.045,
-    }));
-  }, [petalCount]);
-
-  // Coastal Headland Cliffs & Distant Tropical Islands framing the Turquoise Cove (matching aerial-drone-coast.jpg)
-  const headlandRocks = useMemo(() => {
-    return [
-      { pos: [-26, 2.2, -24] as [number, number, number], scale: [14, 5.5, 18] as [number, number, number] },
-      { pos: [-34, 3.6, -38] as [number, number, number], scale: [18, 7.8, 24] as [number, number, number] },
-      { pos: [28, 2.5, -28] as [number, number, number], scale: [16, 6.2, 20] as [number, number, number] },
-      { pos: [38, 4.0, -45] as [number, number, number], scale: [22, 8.5, 26] as [number, number, number] },
-    ];
-  }, []);
-
-  // Floating Sunset Sky Lanterns over the ocean for the Final Sunset Experience
-  const skyLanterns = useMemo(() => {
-    return Array.from({ length: 18 }).map((_, i) => ({
-      pos: [
-        (Math.random() - 0.5) * 26,
-        2.5 + Math.random() * 11,
-        -12 - Math.random() * 24,
-      ] as [number, number, number],
-      phase: i * 0.7,
-    }));
-  }, []);
+  const currentCamPos = useRef(new THREE.Vector3(0, 2.6, 23.6));
+  const currentLookAt = useRef(new THREE.Vector3(0, 2.6, 18.0));
+  const targetCamPos = useRef(new THREE.Vector3(0, 2.6, 23.6));
+  const targetLookAt = useRef(new THREE.Vector3(0, 2.6, 18.0));
 
   useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime();
     const dt = Math.min(delta, 0.05);
     const sp = scrollProgressRef.current;
 
-    // Calculate Sunset Mix (0 = Golden Afternoon Sun, 1 = Romantic Amber-Rose Sunset)
-    let sunsetMix = 0;
-    if (timeOfDayOverride === 'afternoon') {
-      sunsetMix = 0.05;
-    } else if (timeOfDayOverride === 'golden-hour') {
-      sunsetMix = 0.48;
-    } else if (timeOfDayOverride === 'twilight') {
-      sunsetMix = 0.95;
+    let warmth = 0;
+    if (timeOfDayOverride === 'golden-hour') warmth = 0.6;
+    else if (timeOfDayOverride === 'twilight') warmth = 1.0;
+    else warmth = THREE.MathUtils.clamp((sp - 0.15) / 0.85, 0, 1);
+
+    // Update 3D Photorealistic Stage Shaders
+    [aisleMat, stageMat, droneMat, sunsetMat].forEach((mat) => {
+      mat.uniforms.uTime.value = t;
+      mat.uniforms.uWarmth.value = warmth;
+      mat.uniforms.uPointer.value.set(pointer.x, pointer.y);
+    });
+
+    // Cross-fade 3D spatial depth planes based on camera Z progression & preset
+    let aisleOp = 1.0;
+    let stageOp = 0.0;
+    let droneOp = 0.0;
+    let sunsetOp = 0.0;
+
+    if (cameraPreset === 'aisle-walk' || cameraPreset === 'door-exterior') {
+      aisleOp = 1.0;
+    } else if (
+      cameraPreset === 'stage-front' ||
+      cameraPreset === 'stage-orbit-180'
+    ) {
+      aisleOp = 0.0;
+      stageOp = 1.0;
+    } else if (cameraPreset === 'drone-aerial') {
+      aisleOp = 0.0;
+      droneOp = 1.0;
+    } else if (cameraPreset === 'sunset-shore') {
+      aisleOp = 0.0;
+      sunsetOp = 1.0;
     } else {
-      // Automatic progression as the user scrolls from Opening -> Stage -> Drone -> Finale
-      sunsetMix = THREE.MathUtils.clamp((sp - 0.18) / 0.78, 0, 1);
+      // Smooth 3D scroll-driven depth crossfade along the Z-axis
+      aisleOp = 1.0 - THREE.MathUtils.smoothstep(sp, 0.08, 0.2);
+      stageOp =
+        THREE.MathUtils.smoothstep(sp, 0.08, 0.2) *
+        (1.0 - THREE.MathUtils.smoothstep(sp, 0.28, 0.4));
+      droneOp =
+        THREE.MathUtils.smoothstep(sp, 0.28, 0.4) *
+        (1.0 - THREE.MathUtils.smoothstep(sp, 0.72, 0.86));
+      sunsetOp = THREE.MathUtils.smoothstep(sp, 0.72, 0.86);
     }
 
-    // Update Custom GLSL Ocean Water Shader Uniforms
-    oceanMat.uniforms.uTime.value = t;
-    oceanMat.uniforms.uSunsetMix.value = THREE.MathUtils.lerp(
-      oceanMat.uniforms.uSunsetMix.value,
-      sunsetMix,
-      dt * 3.0
+    aisleMat.uniforms.uOpacity.value = THREE.MathUtils.lerp(
+      aisleMat.uniforms.uOpacity.value,
+      aisleOp,
+      dt * 5.0
     );
-    oceanMat.uniforms.uCameraPos.value.copy(camera.position);
-
-    // Dynamic Sun Position & Directional Lighting
-    const sunY = THREE.MathUtils.lerp(14.0, 3.2, sunsetMix);
-    const sunX = THREE.MathUtils.lerp(8.5, 1.5, sunsetMix);
-    const sunZ = -65.0;
-    oceanMat.uniforms.uSunDirection.value
-      .set(sunX, sunY, sunZ)
-      .normalize();
-
-    if (dirLightRef.current) {
-      dirLightRef.current.position.set(sunX, sunY + 8, 12 - sunsetMix * 28);
-      const dayCol = new THREE.Color('#fff4dc');
-      const sunsetCol = new THREE.Color('#ff9d5c');
-      dirLightRef.current.color.lerpColors(dayCol, sunsetCol, sunsetMix);
-      dirLightRef.current.intensity = THREE.MathUtils.lerp(2.5, 1.85, sunsetMix);
-    }
-
-    if (ambientLightRef.current) {
-      const ambDay = new THREE.Color('#e8f4fc');
-      const ambSunset = new THREE.Color('#8c586a');
-      ambientLightRef.current.color.lerpColors(ambDay, ambSunset, sunsetMix);
-      ambientLightRef.current.intensity = THREE.MathUtils.lerp(1.05, 0.78, sunsetMix);
-    }
-
-    // Animate Floating Rose Petals & Sunlight Pollen
-    if (petalsInstancedRef.current) {
-      for (let i = 0; i < petalCount; i++) {
-        const p = petalData[i];
-        const py =
-          ((p.y - t * p.speedY) % 8.5 + 8.5) % 8.5 + 0.25;
-        const px = p.x + Math.sin(t * p.driftX + p.phase) * 0.95;
-        const pz = p.z + Math.cos(t * p.driftX * 0.8 + p.phase) * 0.65;
-
-        dummy.position.set(px, py, pz);
-        dummy.rotation.set(
-          t * p.rotSpeed + p.phase,
-          t * p.rotSpeed * 0.7,
-          Math.sin(t + p.phase) * 0.5
-        );
-        dummy.scale.set(p.scale, p.scale * 0.6, p.scale);
-        dummy.updateMatrix();
-        petalsInstancedRef.current.setMatrixAt(i, dummy.matrix);
-      }
-      petalsInstancedRef.current.instanceMatrix.needsUpdate = true;
-    }
-
-    // Animate Sunset Floating Sky Lanterns
-    if (floatingLanternsRef.current) {
-      floatingLanternsRef.current.visible = sunsetMix > 0.25;
-      floatingLanternsRef.current.children.forEach((child, i) => {
-        const base = skyLanterns[i];
-        if (!base) return;
-        child.position.y =
-          base.pos[1] + Math.sin(t * 0.65 + base.phase) * 0.65;
-        child.position.x =
-          base.pos[0] + Math.cos(t * 0.45 + base.phase) * 0.45;
-      });
-    }
+    stageMat.uniforms.uOpacity.value = THREE.MathUtils.lerp(
+      stageMat.uniforms.uOpacity.value,
+      stageOp,
+      dt * 5.0
+    );
+    droneMat.uniforms.uOpacity.value = THREE.MathUtils.lerp(
+      droneMat.uniforms.uOpacity.value,
+      droneOp,
+      dt * 5.0
+    );
+    sunsetMat.uniforms.uOpacity.value = THREE.MathUtils.lerp(
+      sunsetMat.uniforms.uOpacity.value,
+      sunsetOp,
+      dt * 5.0
+    );
 
     // =====================================================================
-    // CINEMATIC CAMERA CHOREOGRAPHY
+    // 3D CAMERA CHOREOGRAPHY & SCROLL PARALLAX
     // =====================================================================
-    const mouseParallaxX = pointer.x * 0.32;
-    const mouseParallaxY = pointer.y * 0.16;
+    const mouseParallaxX = pointer.x * 0.22;
+    const mouseParallaxY = pointer.y * 0.12;
 
     if (!isDoorOpened && !isOpeningInProgress) {
-      // CHAPTER 0: Exterior of The Blue Door before click
-      const breath = Math.sin(t * 0.8) * 0.12;
+      // CHAPTER 0: Exterior of The Blue Door before touch
+      const breath = Math.sin(t * 0.75) * 0.06;
       targetCamPos.current.set(
-        mouseParallaxX * 0.85,
-        2.55 + mouseParallaxY * 0.5,
-        25.1 + breath
+        mouseParallaxX * 0.55,
+        2.6 + mouseParallaxY * 0.35,
+        23.55 + breath
       );
       targetLookAt.current.set(
-        mouseParallaxX * 0.25,
-        2.62 + mouseParallaxY * 0.25,
+        mouseParallaxX * 0.15,
+        2.62 + mouseParallaxY * 0.15,
         18.0
       );
       currentCamPos.current.lerp(targetCamPos.current, dt * 4.5);
@@ -196,8 +245,8 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
     } else if (isOpeningInProgress) {
       // CHAPTER 1: Continuous Single-Take Door Opening Shot driven by GSAP timeline
       currentCamPos.current.set(
-        openingCamPosRef.current.x + mouseParallaxX * 0.18,
-        openingCamPosRef.current.y + mouseParallaxY * 0.1,
+        openingCamPosRef.current.x + mouseParallaxX * 0.12,
+        openingCamPosRef.current.y + mouseParallaxY * 0.08,
         openingCamPosRef.current.z
       );
       currentLookAt.current.set(
@@ -205,129 +254,33 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
         openingLookAtRef.current.y,
         openingLookAtRef.current.z
       );
-    } else if (cameraPreset !== 'scroll-auto') {
-      // Manual Camera Angle Preset Override from the Director's Bar
-      switch (cameraPreset) {
-        case 'door-exterior':
-          targetCamPos.current.set(mouseParallaxX, 2.55 + mouseParallaxY, 24.4);
-          targetLookAt.current.set(0, 2.6, 18.0);
-          break;
-        case 'aisle-walk':
-          targetCamPos.current.set(
-            mouseParallaxX * 0.6,
-            2.15 + mouseParallaxY * 0.4,
-            10.5 + Math.sin(t * 0.4) * 1.2
-          );
-          targetLookAt.current.set(0, 2.0, -8.0);
-          break;
-        case 'stage-front':
-          targetCamPos.current.set(
-            mouseParallaxX * 0.7,
-            1.88 + mouseParallaxY * 0.3,
-            -3.2
-          );
-          targetLookAt.current.set(0, 2.05, -9.5);
-          break;
-        case 'stage-orbit-180': {
-          // Continuous live 180-degree cinematic orbit around the Ocean-Facing Stage
-          const orbitAngle = Math.sin(t * 0.42) * Math.PI * 0.95;
-          const radius = 5.2;
-          targetCamPos.current.set(
-            Math.sin(orbitAngle) * radius,
-            2.05 + Math.cos(orbitAngle * 0.5) * 0.35,
-            -8.0 + Math.cos(orbitAngle) * radius
-          );
-          targetLookAt.current.set(0, 1.95, -8.0);
-          break;
-        }
-        case 'drone-aerial':
-          targetCamPos.current.set(
-            -7.5 + Math.sin(t * 0.25) * 3.5,
-            16.8,
-            -22.5 + Math.cos(t * 0.25) * 2.5
-          );
-          targetLookAt.current.set(0, 1.5, -4.5);
-          break;
-        case 'sunset-shore':
-          targetCamPos.current.set(
-            2.4 + mouseParallaxX * 0.5,
-            1.75 + mouseParallaxY * 0.3,
-            -4.8
-          );
-          targetLookAt.current.set(0, 1.9, -15.0);
-          break;
-      }
-      currentCamPos.current.lerp(targetCamPos.current, dt * 3.2);
+    } else if (cameraPreset === 'door-exterior') {
+      targetCamPos.current.set(
+        mouseParallaxX * 0.55,
+        2.6 + mouseParallaxY * 0.35,
+        23.55
+      );
+      targetLookAt.current.set(0, 2.62, 18.0);
+      currentCamPos.current.lerp(targetCamPos.current, dt * 3.5);
       currentLookAt.current.lerp(targetLookAt.current, dt * 3.8);
     } else {
-      // SCROLL-DRIVEN CINEMATIC SPLINE JOURNEY
-      if (sp < 0.14) {
-        // Zone 1: Gliding down the Wedding Entrance Aisle (z: 13.5 -> -1.8)
-        const u = sp / 0.14;
-        const z = THREE.MathUtils.lerp(13.5, -1.8, u);
-        const y = THREE.MathUtils.lerp(2.15, 1.88, u);
-        targetCamPos.current.set(mouseParallaxX * 0.5, y + mouseParallaxY * 0.25, z);
-        targetLookAt.current.set(mouseParallaxX * 0.15, 1.98, -8.5);
-      } else if (sp < 0.3) {
-        // Zone 2: Main Wedding Stage Approach + 180-Degree Camera Orbit (0.14 -> 0.30)
-        const u = (sp - 0.14) / 0.16;
-        // Orbit angle sweeps smoothly from 0 (Aisle Front looking at Ocean) to PI (Ocean Back looking through Arch at Villa)
-        const orbitAngle = THREE.MathUtils.smoothstep(u, 0.15, 0.95) * Math.PI;
-        const radius = THREE.MathUtils.lerp(5.8, 4.9, Math.sin(u * Math.PI));
-        const cx = Math.sin(orbitAngle) * radius;
-        const cz = -8.0 + Math.cos(orbitAngle) * radius;
-        const cy = 1.88 + Math.sin(u * Math.PI) * 0.45;
+      // 3D Scroll-Driven Dolly-Zoom & Parallax Journey through the Photorealistic 3D Portals
+      const scrollZ = THREE.MathUtils.lerp(15.2, 13.4, Math.sin(sp * Math.PI));
+      const orbitSway =
+        cameraPreset === 'stage-orbit-180'
+          ? Math.sin(t * 0.65) * 0.85
+          : Math.sin(sp * Math.PI * 2.0) * 0.35;
 
-        targetCamPos.current.set(
-          cx + mouseParallaxX * 0.4,
-          cy + mouseParallaxY * 0.2,
-          cz
-        );
-        targetLookAt.current.set(0, 1.98, -8.0);
-      } else if (sp < 0.46) {
-        // Zone 3: Cinematic Ocean Drone Experience (Rising above stage, pulling back over beach & turquoise ocean)
-        const u = (sp - 0.3) / 0.16;
-        const easeU = THREE.MathUtils.smoothstep(u, 0, 1);
-        const cx = THREE.MathUtils.lerp(0.0, -8.2, easeU);
-        const cy = THREE.MathUtils.lerp(2.15, 17.5, easeU);
-        const cz = THREE.MathUtils.lerp(-12.9, -25.5, easeU);
-
-        targetCamPos.current.set(
-          cx + mouseParallaxX * 0.8,
-          cy + mouseParallaxY * 0.5,
-          cz
-        );
-        // Drone looks down at the beach wedding stage, palm trees & villa coastline
-        const lookZ = THREE.MathUtils.lerp(-8.0, -3.5, easeU);
-        targetLookAt.current.set(0, THREE.MathUtils.lerp(1.95, 1.2, easeU), lookZ);
-      } else if (sp < 0.88) {
-        // Zone 4: High Coastal Panorama & Ocean Horizon Cruise during Editorial Sections (Couple, Story, Events, Countdown, Gallery, RSVP)
-        const u = (sp - 0.46) / 0.42;
-        const angle = u * Math.PI * 0.65;
-        const cx = -8.2 + Math.sin(angle) * 11.5;
-        const cy = THREE.MathUtils.lerp(17.5, 4.2, u);
-        const cz = THREE.MathUtils.lerp(-25.5, -10.5, u);
-
-        targetCamPos.current.set(
-          cx + mouseParallaxX * 0.6,
-          cy + mouseParallaxY * 0.3,
-          cz
-        );
-        targetLookAt.current.set(0, 2.0, -8.5);
-      } else {
-        // Zone 5: Final Sunset Experience by the Candlelit Ocean Stage (0.88 -> 1.0)
-        const u = THREE.MathUtils.clamp((sp - 0.88) / 0.12, 0, 1);
-        const cx = THREE.MathUtils.lerp(3.2, 0.8, u);
-        const cy = THREE.MathUtils.lerp(4.2, 1.85, u);
-        const cz = THREE.MathUtils.lerp(-10.5, -3.6, u);
-
-        targetCamPos.current.set(
-          cx + mouseParallaxX * 0.4,
-          cy + mouseParallaxY * 0.2,
-          cz
-        );
-        targetLookAt.current.set(0, 2.1, -14.0);
-      }
+      targetCamPos.current.set(
+        orbitSway + mouseParallaxX * 0.85,
+        2.6 + mouseParallaxY * 0.45,
+        scrollZ
+      );
+      targetLookAt.current.set(
+        -orbitSway * 0.3 + mouseParallaxX * 0.25,
+        2.6 + mouseParallaxY * 0.2,
+        8.0
+      );
 
       currentCamPos.current.lerp(targetCamPos.current, dt * 4.2);
       currentLookAt.current.lerp(targetLookAt.current, dt * 4.8);
@@ -339,52 +292,8 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
 
   return (
     <group>
-      {/* Dynamic Atmospheric Sky & Twilight Stars */}
-      <Sky
-        distance={450000}
-        sunPosition={[4, 2.2, -30]}
-        inclination={0.51}
-        azimuth={0.24}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.82}
-        rayleigh={1.2}
-        turbidity={7.5}
-      />
-      <Stars
-        radius={90}
-        depth={45}
-        count={1200}
-        factor={3}
-        saturation={0.2}
-        fade
-        speed={0.6}
-      />
-
-      {/* Main Sunlight & Ambient Illumination */}
-      <ambientLight ref={ambientLightRef} intensity={1.05} color="#e8f4fc" />
-      <directionalLight
-        ref={dirLightRef}
-        position={[8.5, 22, 12]}
-        intensity={2.5}
-        color="#fff4dc"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={0.5}
-        shadow-camera-far={75}
-        shadow-camera-left={-22}
-        shadow-camera-right={22}
-        shadow-camera-top={22}
-        shadow-camera-bottom={-22}
-        shadow-bias={-0.0005}
-      />
-      <hemisphereLight
-        args={['#d8f0ff', '#e7d2a7', 0.65]}
-        position={[0, 25, 0]}
-      />
-
       {/* ================================================================= */}
-      {/* SCENE 1 & 2: THE BLUE DOOR & MEDITERRANEAN VILLA ENTRANCE         */}
+      {/* 1. PHOTOREALISTIC 3D BLUE DOOR & MEDITERRANEAN STONE FACADE       */}
       {/* ================================================================= */}
       <BlueDoorEntrance
         doorOpenProgressRef={doorOpenProgressRef}
@@ -395,104 +304,28 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
       />
 
       {/* ================================================================= */}
-      {/* SCENE 3: WEDDING ENTRANCE AISLE – THE DESTINATION                 */}
+      {/* 2. PHOTOREALISTIC 3D CURVED SPATIAL STAGES BEHIND THE BLUE DOOR   */}
+      {/*    (Zero cartoon shapes — 100% real 8K photography in 3D depth)   */}
       {/* ================================================================= */}
-      <WeddingAisleSection />
-
-      {/* ================================================================= */}
-      {/* SCENE 4: MAIN OCEAN-FACING WEDDING STAGE – THE SHOWSTOPPER        */}
-      {/* ================================================================= */}
-      <MainWeddingStage />
-
-      {/* ================================================================= */}
-      {/* SCENE 5: REAL-TIME GLSL TURQUOISE OCEAN & SHORELINE WAVES         */}
-      {/* ================================================================= */}
-      <mesh
-        position={[0, -0.08, -42.0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        material={oceanMat}
-      >
-        <planeGeometry args={[170, 68, 128, 96]} />
+      {/* Stage 1: Wedding Entrance Aisle (revealed immediately through the opening Blue Doors) */}
+      <mesh position={[0, 2.6, 8.5]} material={aisleMat} renderOrder={1}>
+        <planeGeometry args={[14.8, 8.6, 32, 32]} />
       </mesh>
 
-      {/* Underwater Shallow Lagoon Sand Seabed for realistic depth refraction */}
-      <mesh
-        position={[0, -0.55, -42.0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <planeGeometry args={[170, 68]} />
-        <meshBasicMaterial color="#1ca3b0" />
+      {/* Stage 2: Main Ocean-Facing Wedding Stage */}
+      <mesh position={[0, 2.6, 8.2]} material={stageMat} renderOrder={2}>
+        <planeGeometry args={[15.2, 8.8, 32, 32]} />
       </mesh>
 
-      {/* Coastal Headland Cliffs & Tropical Peninsula framing the Lagoon Cove */}
-      {headlandRocks.map((hr, idx) => (
-        <group key={idx} position={hr.pos}>
-          <mesh castShadow receiveShadow>
-            <dodecahedronGeometry args={[1, 1]} />
-            <meshStandardMaterial
-              color="#5d5449"
-              roughness={0.9}
-              onBeforeCompile={(shader) => {
-                shader.vertexShader = shader.vertexShader.replace(
-                  '#include <begin_vertex>',
-                  `vec3 transformed = vec3(position.x * ${hr.scale[0].toFixed(1)}, position.y * ${hr.scale[1].toFixed(1)}, position.z * ${hr.scale[2].toFixed(1)});`
-                );
-              }}
-            />
-          </mesh>
-          {/* Green Tropical Vegetation Cap on Headland Cliffs */}
-          <mesh position={[0, hr.scale[1] * 0.45, 0]}>
-            <BoxVegetationCap scale={hr.scale} />
-          </mesh>
-        </group>
-      ))}
+      {/* Stage 3: Aerial Ocean Drone Panorama */}
+      <mesh position={[0, 2.6, 7.9]} material={droneMat} renderOrder={3}>
+        <planeGeometry args={[15.6, 9.0, 32, 32]} />
+      </mesh>
 
-      {/* ================================================================= */}
-      {/* FLOATING ROSE PETALS & GOLDEN SUNLIGHT POLLEN PARTICLES           */}
-      {/* ================================================================= */}
-      <instancedMesh
-        ref={petalsInstancedRef}
-        args={[undefined, undefined, petalCount]}
-      >
-        <planeGeometry args={[1, 1]} />
-        <meshStandardMaterial
-          color="#fff6e8"
-          emissive="#ffdca8"
-          emissiveIntensity={0.35}
-          side={THREE.DoubleSide}
-          transparent
-          opacity={0.85}
-        />
-      </instancedMesh>
-
-      {/* ================================================================= */}
-      {/* FLOATING WARM SKY LANTERNS FOR SUNSET FINALE                      */}
-      {/* ================================================================= */}
-      <group ref={floatingLanternsRef} visible={false}>
-        {skyLanterns.map((sl, idx) => (
-          <group key={idx} position={sl.pos}>
-            <mesh>
-              <cylinderGeometry args={[0.18, 0.12, 0.36, 12]} />
-              <meshBasicMaterial color="#ffb85c" transparent opacity={0.88} />
-            </mesh>
-            <mesh position={[0, -0.1, 0]}>
-              <sphereGeometry args={[0.07, 8, 8]} />
-              <meshBasicMaterial color="#fff3c4" />
-            </mesh>
-          </group>
-        ))}
-      </group>
+      {/* Stage 4: Sunset Beach Finale */}
+      <mesh position={[0, 2.6, 7.6]} material={sunsetMat} renderOrder={4}>
+        <planeGeometry args={[16.0, 9.2, 32, 32]} />
+      </mesh>
     </group>
   );
 };
-
-const BoxVegetationCap: React.FC<{ scale: [number, number, number] }> = ({
-  scale,
-}) => (
-  <mesh>
-    <cylinderGeometry
-      args={[scale[0] * 0.55, scale[0] * 0.7, scale[1] * 0.35, 9]}
-    />
-    <meshStandardMaterial color="#274e2b" roughness={0.85} />
-  </mesh>
-);

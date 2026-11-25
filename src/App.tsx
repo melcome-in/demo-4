@@ -159,7 +159,7 @@ export const App: React.FC = () => {
     doorOpenProgressRef.current = 0;
     handleTurnProgressRef.current = 0;
     sunlightBurstRef.current = 0;
-    openingCamPosRef.current = { x: 0, y: 2.55, z: 25.1 };
+    openingCamPosRef.current = { x: 0, y: 2.6, z: 23.55 };
     openingLookAtRef.current = { x: 0, y: 2.6, z: 18.0 };
 
     const tl = gsap.timeline({
@@ -171,79 +171,49 @@ export const App: React.FC = () => {
     });
     timelineRef.current = tl;
 
-    // Step 1: Camera slowly approaches the blue wooden double doors (0.0s -> 1.4s)
+    // Step 1: Camera slowly approaches the blue wooden double doors (0.0s -> 1.1s)
     tl.to(
       openingCamPosRef.current,
       {
-        z: 21.8,
-        y: 2.48,
-        duration: 1.4,
+        z: 21.2,
+        y: 2.6,
+        duration: 1.1,
         ease: 'power2.inOut',
       },
       0
     );
 
-    // Step 2: Ornate brass door handles rotate realistically downward (0.55s -> 1.35s)
-    tl.to(
-      handleTurnProgressRef,
-      {
-        current: 1,
-        duration: 0.8,
-        ease: 'power2.inOut',
-      },
-      0.55
-    );
-
-    // Step 3: Both blue wooden doors swing slowly inward & sunlight enters through the opening (1.05s -> 3.6s)
+    // Step 2: Both blue wooden doors swing slowly inward (0.7s -> 3.1s)
     tl.to(
       doorOpenProgressRef,
       {
         current: 1,
-        duration: 2.55,
+        duration: 2.4,
         ease: 'power3.inOut',
       },
-      1.05
+      0.7
     );
 
-    tl.to(
-      sunlightBurstRef,
-      {
-        current: 1,
-        duration: 1.2,
-        ease: 'power2.out',
-      },
-      1.1
-    );
-    tl.to(
-      sunlightBurstRef,
-      {
-        current: 0.25,
-        duration: 1.6,
-        ease: 'power2.inOut',
-      },
-      2.4
-    );
-
-    // Step 4: Camera smoothly travels straight through the open doorway into the tropical wedding entrance aisle (1.85s -> 5.1s)
+    // Step 3: Camera smoothly travels straight through the open doorway into the photorealistic 3D wedding entrance aisle (1.4s -> 4.3s)
     tl.to(
       openingCamPosRef.current,
       {
-        z: 13.5,
-        y: 2.15,
-        duration: 3.25,
+        z: 15.2,
+        y: 2.6,
+        duration: 2.9,
         ease: 'power2.inOut',
       },
-      1.85
+      1.4
     );
     tl.to(
       openingLookAtRef.current,
       {
-        z: -8.5,
-        y: 1.98,
-        duration: 3.25,
+        z: 8.0,
+        y: 2.6,
+        duration: 2.9,
         ease: 'power2.inOut',
       },
-      1.85
+      1.4
     );
   }, [isOpeningInProgress]);
 
