@@ -54,11 +54,6 @@ export const OpeningBlueDoorHero: React.FC<OpeningBlueDoorHeroProps> = ({
                 <span>Personalize Names</span>
               </button>
             </div>
-
-            {/* Subtle top-edge floating quote so the Blue Door in the center is 100% unobstructed */}
-            <p className="mt-1 font-serif italic text-lg sm:text-2xl md:text-3xl text-[#fcfaf5] text-center drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)] px-4">
-              “Some beautiful moments deserve a beautiful beginning.”
-            </p>
           </motion.div>
 
           {/* Center of Screen: 100% Clear & Unobstructed View of the 3D Blue Door */}

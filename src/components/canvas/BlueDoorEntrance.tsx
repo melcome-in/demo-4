@@ -95,9 +95,6 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
   const leftHandleRef = useRef<THREE.Group>(null);
   const rightHandleRef = useRef<THREE.Group>(null);
   const sunShaftRef = useRef<THREE.Mesh>(null);
-  const bougainvilleaGroupRef = useRef<THREE.Group>(null);
-  const palmLeftRef = useRef<THREE.Group>(null);
-  const palmRightRef = useRef<THREE.Group>(null);
 
   // Exact facade coordinate calibration matching blue-door-texture.jpg
   const W = 6.4;
@@ -211,32 +208,6 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
     return { leftDoor, rightDoor, leftWall, rightWall, topWall, botWall };
   }, [W, H, xMin, xMax, yMin, yMax, xL, xR, yB, yT, doorW, doorH]);
 
-  // 3D Bougainvillea Blossom Clusters hanging in 3D space around the top archway
-  const bougainvilleaClusters = useMemo(() => {
-    const items: {
-      pos: [number, number, number];
-      scale: number;
-      color: string;
-      phase: number;
-    }[] = [];
-    const colors = ['#d61f69', '#e83e8c', '#c2185b', '#f06292', '#ad1457'];
-
-    for (let i = 0; i < 42; i++) {
-      const t = i / 42;
-      const angle = -0.3 + t * 1.9;
-      const bx = -0.7 + Math.cos(angle * 1.3) * 2.35 + (Math.random() - 0.5) * 0.6;
-      const by = 4.6 + Math.sin(angle) * 1.55 + (Math.random() - 0.5) * 0.5;
-      const bz = 0.34 + Math.random() * 0.35;
-      items.push({
-        pos: [bx, by, bz],
-        scale: 0.12 + Math.random() * 0.16,
-        color: colors[i % colors.length],
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
-    return items;
-  }, []);
-
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     const openP = doorOpenProgressRef.current;
@@ -274,18 +245,6 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
       const mat = sunShaftRef.current.material as THREE.MeshBasicMaterial;
       mat.opacity = burstP * 0.36 * (0.88 + 0.12 * Math.sin(t * 2.5));
       sunShaftRef.current.scale.x = 0.2 + openP * 1.65;
-    }
-
-    // 4. Gentle Mediterranean breeze on overhanging 3D bougainvillea & palms
-    if (bougainvilleaGroupRef.current) {
-      bougainvilleaGroupRef.current.rotation.z = Math.sin(t * 1.4) * 0.018;
-      bougainvilleaGroupRef.current.position.x = Math.sin(t * 1.1) * 0.025;
-    }
-    if (palmLeftRef.current) {
-      palmLeftRef.current.rotation.z = Math.sin(t * 1.2) * 0.035;
-    }
-    if (palmRightRef.current) {
-      palmRightRef.current.rotation.z = Math.cos(t * 1.15) * 0.035;
     }
   });
 
@@ -611,69 +570,6 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-
-      {/* ================================================================= */}
-      {/* 3D SWAYING BOUGAINVILLEA VINES & TROPICAL PALM FOLIAGE            */}
-      {/* ================================================================= */}
-      <group ref={bougainvilleaGroupRef}>
-        {bougainvilleaClusters.map((b, i) => (
-          <mesh key={i} position={b.pos} castShadow>
-            <dodecahedronGeometry args={[b.scale, 1]} />
-            <meshStandardMaterial
-              color={b.color}
-              roughness={0.45}
-              emissive={b.color}
-              emissiveIntensity={0.12}
-            />
-          </mesh>
-        ))}
-      </group>
-
-      {/* Left & Right Framing Tropical Palm Fronds & Terracotta Planters */}
-      <group ref={palmLeftRef} position={[-3.25, 0.0, 0.85]}>
-        {/* Terracotta Amphora Planter */}
-        <mesh position={[0, 0.48, 0]} castShadow>
-          <cylinderGeometry args={[0.42, 0.28, 0.95, 20]} />
-          <meshStandardMaterial color="#b35c37" roughness={0.75} />
-        </mesh>
-        {[0, 1, 2, 3, 4, 5].map((fi) => (
-          <mesh
-            key={fi}
-            position={[
-              Math.cos(fi * 1.05) * 0.45,
-              1.35 + (fi % 3) * 0.35,
-              Math.sin(fi * 1.05) * 0.35,
-            ]}
-            rotation={[0.3, fi * 0.9, -0.45]}
-            castShadow
-          >
-            <coneGeometry args={[0.32, 1.65, 5]} />
-            <meshStandardMaterial color="#2d5a34" roughness={0.55} />
-          </mesh>
-        ))}
-      </group>
-
-      <group ref={palmRightRef} position={[3.35, 0.0, 0.85]}>
-        <mesh position={[0, 0.48, 0]} castShadow>
-          <cylinderGeometry args={[0.42, 0.28, 0.95, 20]} />
-          <meshStandardMaterial color="#b35c37" roughness={0.75} />
-        </mesh>
-        {[0, 1, 2, 3, 4, 5].map((fi) => (
-          <mesh
-            key={fi}
-            position={[
-              Math.cos(fi * 1.05) * 0.45,
-              1.35 + (fi % 3) * 0.35,
-              Math.sin(fi * 1.05) * 0.35,
-            ]}
-            rotation={[0.3, fi * 0.9, 0.45]}
-            castShadow
-          >
-            <coneGeometry args={[0.32, 1.65, 5]} />
-            <meshStandardMaterial color="#2d5a34" roughness={0.55} />
-          </mesh>
-        ))}
-      </group>
     </group>
   );
 };
