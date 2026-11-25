@@ -1,12 +1,14 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame, useLoader, ThreeEvent } from '@react-three/fiber';
 import { getArchitecturalPBRTextures } from '../../utils/proceduralTextures';
 
 interface BlueDoorEntranceProps {
   doorOpenProgressRef: React.MutableRefObject<number>;
   handleTurnProgressRef: React.MutableRefObject<number>;
   sunlightBurstRef: React.MutableRefObject<number>;
+  onTouchDoor?: () => void;
+  isDoorInteractive?: boolean;
 }
 
 // Helper to create a plane with custom UV bounds and world bounds
@@ -46,7 +48,36 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
   doorOpenProgressRef,
   handleTurnProgressRef,
   sunlightBurstRef,
+  onTouchDoor,
+  isDoorInteractive = true,
 }) => {
+  const [isDoorHovered, setIsDoorHovered] = useState(false);
+
+  const handleDoorPointerOver = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (!isDoorInteractive) return;
+    setIsDoorHovered(true);
+    document.body.style.cursor = 'pointer';
+  };
+
+  const handleDoorPointerOut = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    setIsDoorHovered(false);
+    document.body.style.cursor = 'default';
+  };
+
+  const handleDoorTap = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (!isDoorInteractive) return;
+    document.body.style.cursor = 'default';
+    setIsDoorHovered(false);
+    onTouchDoor?.();
+  };
+
+  const blockOutsideWallClick = (e: ThreeEvent<MouseEvent>) => {
+    // Clicking the stone walls around the door must NOT open the door
+    e.stopPropagation();
+  };
   const doorTexture = useLoader(
     THREE.TextureLoader,
     './assets/images/blue-door-texture.jpg'
@@ -215,15 +246,25 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
     // 1. Swing both Blue Doors inward realistically (up to 104 degrees = 1.81 rad)
     if (leftDoorGroupRef.current && rightDoorGroupRef.current) {
       const maxAngle = 1.82;
+      const hoverNudge = isDoorHovered && openP === 0 ? 0.035 : 0;
       // Left door hinged on left, swings inward (-Z is inside, so +Y rotation swings inward toward -Z)
-      leftDoorGroupRef.current.rotation.y = openP * maxAngle;
+      leftDoorGroupRef.current.rotation.y = THREE.MathUtils.lerp(
+        leftDoorGroupRef.current.rotation.y,
+        openP * maxAngle + hoverNudge,
+        0.18
+      );
       // Right door hinged on right, swings inward (-Y rotation swings inward toward -Z)
-      rightDoorGroupRef.current.rotation.y = -openP * maxAngle;
+      rightDoorGroupRef.current.rotation.y = THREE.MathUtils.lerp(
+        rightDoorGroupRef.current.rotation.y,
+        -openP * maxAngle - hoverNudge,
+        0.18
+      );
     }
 
     // 2. Realistic brass door handle rotation & latch motion
     if (leftHandleRef.current && rightHandleRef.current) {
-      const turnAngle = Math.sin(handleP * Math.PI) * 0.58;
+      const hoverHandle = isDoorHovered && handleP === 0 ? 0.14 : 0;
+      const turnAngle = Math.sin(handleP * Math.PI) * 0.58 + hoverHandle;
       leftHandleRef.current.rotation.z = -turnAngle;
       rightHandleRef.current.rotation.z = turnAngle;
     }
@@ -253,6 +294,7 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
       {/* Photorealistic 3D Stone Wall Surround with Real Open Portal Cutout */}
       <mesh
         geometry={geometries.leftWall}
+        onClick={blockOutsideWallClick}
         castShadow
         receiveShadow
       >
@@ -266,6 +308,7 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
 
       <mesh
         geometry={geometries.rightWall}
+        onClick={blockOutsideWallClick}
         castShadow
         receiveShadow
       >
@@ -279,6 +322,7 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
 
       <mesh
         geometry={geometries.topWall}
+        onClick={blockOutsideWallClick}
         castShadow
         receiveShadow
       >
@@ -292,6 +336,7 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
 
       <mesh
         geometry={geometries.botWall}
+        onClick={blockOutsideWallClick}
         receiveShadow
       >
         <meshStandardMaterial
@@ -373,8 +418,15 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
 
       {/* ================================================================= */}
       {/* LEFT BLUE WOODEN DOOR (Hinged at [xL, yB, 0.02])                   */}
+      {/* Touching/Clicking ONLY the Left or Right Blue Door opens it!      */}
       {/* ================================================================= */}
-      <group ref={leftDoorGroupRef} position={[xL, yB, 0.02]}>
+      <group
+        ref={leftDoorGroupRef}
+        position={[xL, yB, 0.02]}
+        onClick={handleDoorTap}
+        onPointerOver={handleDoorPointerOver}
+        onPointerOut={handleDoorPointerOut}
+      >
         <mesh
           geometry={geometries.leftDoor}
           castShadow
@@ -449,8 +501,15 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
 
       {/* ================================================================= */}
       {/* RIGHT BLUE WOODEN DOOR (Hinged at [xR, yB, 0.02])                  */}
+      {/* Touching/Clicking ONLY the Left or Right Blue Door opens it!      */}
       {/* ================================================================= */}
-      <group ref={rightDoorGroupRef} position={[xR, yB, 0.02]}>
+      <group
+        ref={rightDoorGroupRef}
+        position={[xR, yB, 0.02]}
+        onClick={handleDoorTap}
+        onPointerOver={handleDoorPointerOver}
+        onPointerOut={handleDoorPointerOut}
+      >
         <mesh
           geometry={geometries.rightDoor}
           castShadow

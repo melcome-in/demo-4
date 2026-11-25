@@ -19,6 +19,7 @@ interface DestinationSceneProps {
   scrollProgressRef: React.MutableRefObject<number>;
   cameraPreset: CameraPresetId;
   timeOfDayOverride: 'auto' | 'afternoon' | 'golden-hour' | 'twilight';
+  onTouchDoor?: () => void;
 }
 
 export const DestinationScene: React.FC<DestinationSceneProps> = ({
@@ -32,6 +33,7 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
   scrollProgressRef,
   cameraPreset,
   timeOfDayOverride,
+  onTouchDoor,
 }) => {
   const { camera, pointer } = useThree();
 
@@ -414,6 +416,8 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
         doorOpenProgressRef={doorOpenProgressRef}
         handleTurnProgressRef={handleTurnProgressRef}
         sunlightBurstRef={sunlightBurstRef}
+        onTouchDoor={onTouchDoor}
+        isDoorInteractive={!isDoorOpened && !isOpeningInProgress}
       />
 
       {/* ================================================================= */}

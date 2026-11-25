@@ -292,6 +292,7 @@ export const App: React.FC = () => {
               scrollProgressRef={scrollProgressRef}
               cameraPreset={cameraPreset}
               timeOfDayOverride={timeOfDayOverride}
+              onTouchDoor={handleOpenDoor}
             />
           </Suspense>
         </Canvas>
