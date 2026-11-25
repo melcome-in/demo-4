@@ -70,7 +70,7 @@ export const NavigationHUD: React.FC<NavigationHUDProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCameraBar, setShowCameraBar] = useState(false);
 
-  if (!isDoorOpened) return null;
+  if (!isDoorOpened || cameraPreset === 'door-exterior') return null;
 
   return (
     <>
@@ -161,16 +161,6 @@ export const NavigationHUD: React.FC<NavigationHUDProps> = ({
             >
               <DoorOpen className="w-3.5 h-3.5 text-[#dab87b]" />
               <span className="hidden lg:inline">Blue Door</span>
-            </button>
-
-            {/* Personalize Bride & Groom Names */}
-            <button
-              type="button"
-              onClick={onOpenCustomizer}
-              title="Customize Bride & Groom Names"
-              className="p-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 text-[#dab87b] transition-all"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
             </button>
 
             {/* Soundscape Mute / Unmute */}
