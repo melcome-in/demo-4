@@ -275,9 +275,6 @@ export const App: React.FC = () => {
         renderMode={renderMode}
       />
 
-      {/* Subtle Film Grain Overlay */}
-      <div className="fixed inset-0 z-[3] pointer-events-none film-grain opacity-50" />
-
       {/* 4. Top Floating Navigation & 3D Camera Angle Director HUD */}
       <NavigationHUD
         config={config}
