@@ -87,13 +87,14 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
     e.stopPropagation();
   };
 
-  // Exact facade coordinate calibration matching blue-door-texture.jpg
-  const W = 7.4;
+  // Exact 3:4 portrait aspect ratio of blue-door-texture.jpg centered vertically at y = 2.6
+  const W = 6.45;
   const H = 8.6;
-  const xMin = -W / 2;
-  const xMax = W / 2;
-  const yMin = -1.1;
-  const yMax = yMin + H;
+  const xMin = -W / 2; // -3.225
+  const xMax = W / 2; // +3.225
+  const yCenter = 2.6;
+  const yMin = yCenter - H / 2; // -1.7
+  const yMax = yCenter + H / 2; // +6.9
 
   const uL = 0.232;
   const uM = 0.5;
@@ -190,7 +191,42 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
       yMin + botWallH / 2
     );
 
-    return { leftDoor, rightDoor, leftWall, rightWall, topWall, botWall };
+    // Seamless Photographic White Stone Wall Extensions for Widescreen 16:9 Viewports
+    const outerWingW = 8.0;
+    const leftOuterWing = createUVMappedBoxFace(
+      outerWingW,
+      H,
+      wallDepth,
+      0.13,
+      0.0,
+      0,
+      1,
+      xMin - outerWingW / 2,
+      yMin + H / 2
+    );
+
+    const rightOuterWing = createUVMappedBoxFace(
+      outerWingW,
+      H,
+      wallDepth,
+      1.0,
+      0.87,
+      0,
+      1,
+      xMax + outerWingW / 2,
+      yMin + H / 2
+    );
+
+    return {
+      leftDoor,
+      rightDoor,
+      leftWall,
+      rightWall,
+      topWall,
+      botWall,
+      leftOuterWing,
+      rightOuterWing,
+    };
   }, [W, H, xMin, xMax, yMin, yMax, xL, xR, yB, yT, doorW, doorH]);
 
   useFrame(() => {
@@ -231,14 +267,12 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
         <meshBasicMaterial map={doorTexture} />
       </mesh>
 
-      {/* Seamless White Stone Wall Extensions for Wide Monitors */}
-      <mesh position={[-8.6, 3.2, -0.05]} onClick={blockOutsideWallClick}>
-        <boxGeometry args={[10.0, 10.5, 0.35]} />
-        <meshBasicMaterial color="#f3eee6" />
+      {/* Seamless Photographic Stone Extensions on Left & Right for Widescreen Displays */}
+      <mesh geometry={geometries.leftOuterWing} onClick={blockOutsideWallClick}>
+        <meshBasicMaterial map={doorTexture} />
       </mesh>
-      <mesh position={[8.6, 3.2, -0.05]} onClick={blockOutsideWallClick}>
-        <boxGeometry args={[10.0, 10.5, 0.35]} />
-        <meshBasicMaterial color="#f3eee6" />
+      <mesh geometry={geometries.rightOuterWing} onClick={blockOutsideWallClick}>
+        <meshBasicMaterial map={doorTexture} />
       </mesh>
 
       {/* Left Photorealistic 3D Hinged Blue Door (Opens ONLY when touching/clicking the door) */}

@@ -59,7 +59,7 @@ export const App: React.FC = () => {
   const doorOpenProgressRef = useRef(0);
   const handleTurnProgressRef = useRef(0);
   const sunlightBurstRef = useRef(0);
-  const openingCamPosRef = useRef({ x: 0, y: 2.55, z: 25.1 });
+  const openingCamPosRef = useRef({ x: 0, y: 2.6, z: 28.2 });
   const openingLookAtRef = useRef({ x: 0, y: 2.6, z: 18.0 });
   const scrollProgressRef = useRef(0);
 
@@ -159,7 +159,7 @@ export const App: React.FC = () => {
     doorOpenProgressRef.current = 0;
     handleTurnProgressRef.current = 0;
     sunlightBurstRef.current = 0;
-    openingCamPosRef.current = { x: 0, y: 2.6, z: 23.55 };
+    openingCamPosRef.current = { x: 0, y: 2.6, z: 28.2 };
     openingLookAtRef.current = { x: 0, y: 2.6, z: 18.0 };
 
     const tl = gsap.timeline({
@@ -171,11 +171,11 @@ export const App: React.FC = () => {
     });
     timelineRef.current = tl;
 
-    // Step 1: Camera slowly approaches the blue wooden double doors (0.0s -> 1.1s)
+    // Step 1: Camera slowly approaches the full blue wooden double doors (0.0s -> 1.1s)
     tl.to(
       openingCamPosRef.current,
       {
-        z: 21.2,
+        z: 23.2,
         y: 2.6,
         duration: 1.1,
         ease: 'power2.inOut',
@@ -243,7 +243,7 @@ export const App: React.FC = () => {
         <Canvas
           shadows
           dpr={[1, 1.75]}
-          camera={{ position: [0, 2.55, 25.1], fov: 46, near: 0.1, far: 250 }}
+          camera={{ position: [0, 2.6, 28.2], fov: 46, near: 0.1, far: 250 }}
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,

@@ -108,7 +108,16 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
   timeOfDayOverride,
   onTouchDoor,
 }) => {
-  const { camera, pointer } = useThree();
+  const { camera, pointer, size } = useThree();
+
+  // Compute exact responsive camera Z distance so 100% of the full Blue Door image (W=6.45, H=8.6) is visible on any screen aspect ratio
+  const fullDoorCamZ = useMemo(() => {
+    const aspect = size.width / Math.max(size.height, 1);
+    const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(46 * 0.5));
+    const distForFullHeight = (8.6 * 0.5) / tanHalfFov; // 10.13m
+    const distForFullWidth = (6.45 * 0.5) / (aspect * tanHalfFov);
+    return 18.0 + Math.max(distForFullHeight, distForFullWidth);
+  }, [size.width, size.height]);
 
   // Load real 8K destination wedding photographs into 3D WebGL space
   const [aisleTex, stageTex, droneTex, sunsetTex] = useLoader(
@@ -146,9 +155,9 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
   );
 
   // Smooth camera state vectors
-  const currentCamPos = useRef(new THREE.Vector3(0, 2.6, 23.6));
+  const currentCamPos = useRef(new THREE.Vector3(0, 2.6, 28.2));
   const currentLookAt = useRef(new THREE.Vector3(0, 2.6, 18.0));
-  const targetCamPos = useRef(new THREE.Vector3(0, 2.6, 23.6));
+  const targetCamPos = useRef(new THREE.Vector3(0, 2.6, 28.2));
   const targetLookAt = useRef(new THREE.Vector3(0, 2.6, 18.0));
 
   useFrame(({ clock }, delta) => {
@@ -228,20 +237,20 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
     const mouseParallaxY = pointer.y * 0.12;
 
     if (!isDoorOpened && !isOpeningInProgress) {
-      // CHAPTER 0: Exterior of The Blue Door before touch
-      const breath = Math.sin(t * 0.75) * 0.06;
+      // CHAPTER 0: Full 100% view of The Blue Door before touch
+      const breath = Math.sin(t * 0.75) * 0.04;
       targetCamPos.current.set(
-        mouseParallaxX * 0.55,
-        2.6 + mouseParallaxY * 0.35,
-        23.55 + breath
+        mouseParallaxX * 0.35,
+        2.6 + mouseParallaxY * 0.25,
+        fullDoorCamZ + breath
       );
       targetLookAt.current.set(
-        mouseParallaxX * 0.15,
-        2.62 + mouseParallaxY * 0.15,
+        mouseParallaxX * 0.1,
+        2.6 + mouseParallaxY * 0.1,
         18.0
       );
-      currentCamPos.current.lerp(targetCamPos.current, dt * 4.5);
-      currentLookAt.current.lerp(targetLookAt.current, dt * 4.5);
+      currentCamPos.current.lerp(targetCamPos.current, dt * 6.0);
+      currentLookAt.current.lerp(targetLookAt.current, dt * 6.0);
     } else if (isOpeningInProgress) {
       // CHAPTER 1: Continuous Single-Take Door Opening Shot driven by GSAP timeline
       currentCamPos.current.set(
@@ -256,11 +265,11 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
       );
     } else if (cameraPreset === 'door-exterior') {
       targetCamPos.current.set(
-        mouseParallaxX * 0.55,
-        2.6 + mouseParallaxY * 0.35,
-        23.55
+        mouseParallaxX * 0.35,
+        2.6 + mouseParallaxY * 0.25,
+        fullDoorCamZ
       );
-      targetLookAt.current.set(0, 2.62, 18.0);
+      targetLookAt.current.set(0, 2.6, 18.0);
       currentCamPos.current.lerp(targetCamPos.current, dt * 3.5);
       currentLookAt.current.lerp(targetLookAt.current, dt * 3.8);
     } else {
