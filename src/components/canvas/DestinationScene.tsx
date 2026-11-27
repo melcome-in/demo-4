@@ -32,12 +32,14 @@ export const DestinationScene: React.FC<DestinationSceneProps> = ({
 }) => {
   const { camera, pointer, size } = useThree();
 
-  // Compute exact responsive camera Z distance so 100% of the full Blue Door image (W=6.45, H=8.6) is visible on any screen aspect ratio
+  // Compute exact responsive camera Z distance so 100% of the full Blue Door is visible on both desktop widescreen & mobile portrait
   const fullDoorCamZ = useMemo(() => {
     const aspect = size.width / Math.max(size.height, 1);
     const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(46 * 0.5));
     const distForFullHeight = (8.6 * 0.5) / tanHalfFov; // 10.13m
-    const distForFullWidth = (6.45 * 0.5) / (aspect * tanHalfFov);
+    // On narrow portrait mobile screens, frame the Blue Door + carved stone arch cleanly edge-to-edge
+    const targetWidth = aspect < 0.72 ? 4.85 : 6.45;
+    const distForFullWidth = (targetWidth * 0.5) / (aspect * tanHalfFov);
     return 18.0 + Math.max(distForFullHeight, distForFullWidth);
   }, [size.width, size.height]);
 

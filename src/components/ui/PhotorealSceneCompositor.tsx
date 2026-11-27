@@ -55,16 +55,19 @@ export const PhotorealSceneCompositor: React.FC<
 
     let rafId = 0;
     const animate = () => {
-      // Smooth steadicam damping for natural forward-walking feel
+      const isMobile = window.innerWidth < 768;
+      // Slightly faster damping on mobile touch so walking motion feels tightly coupled to finger swipe
+      const damp = isMobile ? 0.16 : 0.1;
       smoothScrollRef.current +=
-        (targetScrollRef.current - smoothScrollRef.current) * 0.1;
+        (targetScrollRef.current - smoothScrollRef.current) * damp;
 
       const sp = smoothScrollRef.current;
       const segments = WALKING_FRAMES.length - 1; // 3 segments across 4 frames
       const s = sp * segments; // 0.0 -> 3.0
 
-      // Subtle walking stride micro-bob (smooth sinusoidal vertical sway)
-      const strideBobY = Math.sin(sp * Math.PI * 14) * 2.4;
+      // Subtle walking stride micro-bob
+      const strideBobY = Math.sin(sp * Math.PI * 14) * (isMobile ? 1.6 : 2.4);
+      const zoomFactor = isMobile ? 0.24 : 0.34;
 
       for (let i = 0; i < WALKING_FRAMES.length; i++) {
         const el = layerRefs.current[i];
@@ -76,27 +79,23 @@ export const PhotorealSceneCompositor: React.FC<
         let scale = 1.0;
 
         if (i === 0) {
-          // First frame is always base layer (opacity 1) and zooms forward smoothly from 1.0 -> 1.38
           opacity = local < 1.15 ? 1 : 0;
-          scale = 1.0 + Math.max(0, Math.min(1.15, local)) * 0.34;
+          scale = 1.0 + Math.max(0, Math.min(1.15, local)) * zoomFactor;
         } else {
-          // Subsequent zoomed frames cross-fade smoothly in over [local: -0.38 -> 0.0]
-          // and then zoom forward continuously as you keep walking [local: 0.0 -> 1.0]
           if (local <= -0.38) {
             opacity = 0;
             scale = 0.96;
           } else if (local < 0) {
-            const t = (local + 0.38) / 0.38; // 0 -> 1
-            // Smoothstep easing for invisible seam transition
+            const t = (local + 0.38) / 0.38;
             opacity = t * t * (3 - 2 * t);
-            scale = 0.96 + opacity * 0.04; // 0.96 -> 1.00
+            scale = 0.96 + opacity * 0.04;
           } else if (local <= 1.15) {
             opacity = 1;
-            const maxZoom = i === WALKING_FRAMES.length - 1 ? 0.18 : 0.34;
+            const maxZoom = i === WALKING_FRAMES.length - 1 ? 0.14 : zoomFactor;
             scale = 1.0 + Math.min(1.15, local) * maxZoom;
           } else {
             opacity = 0;
-            scale = 1.34;
+            scale = 1.0 + zoomFactor;
           }
         }
 
@@ -120,7 +119,7 @@ export const PhotorealSceneCompositor: React.FC<
   }
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[2] overflow-hidden bg-[#07131e]">
+    <div className="fixed inset-0 h-[100dvh] pointer-events-none z-[2] overflow-hidden bg-[#07131e]">
       {WALKING_FRAMES.map((frame, idx) => (
         <div
           key={frame.src}

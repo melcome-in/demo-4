@@ -51,7 +51,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
   return (
     <section
       id="section-rsvp"
-      className="relative py-24 md:py-32 px-6 md:px-14 pointer-events-auto"
+      className="relative py-20 md:py-32 px-4 sm:px-6 md:px-14 pointer-events-auto"
     >
       <div className="max-w-2xl mx-auto">
         <motion.div
@@ -59,7 +59,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.25 }}
           transition={{ duration: 0.8 }}
-          className="rounded-[2.2rem] bg-[#071624]/82 backdrop-blur-2xl border border-[#dab87b]/40 p-8 md:p-12 shadow-[0_30px_90px_rgba(0,0,0,0.65)]"
+          className="rounded-[2rem] md:rounded-[2.2rem] bg-[#071624]/82 backdrop-blur-2xl border border-[#dab87b]/40 p-6 sm:p-8 md:p-12 shadow-[0_30px_90px_rgba(0,0,0,0.65)]"
         >
           <div className="text-center mb-8">
             <h2 className="font-serif text-4xl sm:text-5xl font-light text-white mb-2">
@@ -104,7 +104,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
                   placeholder="Enter your full name"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.06] border border-white/15 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#dab87b]"
+                  className="w-full min-h-[48px] px-4 py-3 rounded-2xl bg-white/[0.06] border border-white/15 text-base md:text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#dab87b]"
                 />
               </div>
 
@@ -118,7 +118,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
                       key={num}
                       type="button"
                       onClick={() => setGuestsCount(num)}
-                      className={`flex-1 py-2.5 rounded-xl text-xs font-medium border transition-all ${
+                      className={`flex-1 min-h-[46px] py-2.5 rounded-xl text-sm font-medium border transition-all active:scale-95 ${
                         guestsCount === num
                           ? 'bg-[#2d8ec8] text-white border-[#8cc9ea]'
                           : 'bg-white/[0.05] hover:bg-white/10 text-white/75 border-white/15'
@@ -138,7 +138,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
                   <button
                     type="button"
                     onClick={() => setAttending('yes')}
-                    className={`py-3 rounded-xl border text-xs uppercase tracking-[0.18em] transition-all ${
+                    className={`min-h-[48px] py-3 px-2 rounded-xl border text-xs uppercase tracking-[0.14em] transition-all active:scale-95 ${
                       attending === 'yes'
                         ? 'bg-[#184d73] border-[#dab87b] text-white'
                         : 'bg-white/[0.05] border-white/15 text-white/70'
@@ -149,7 +149,7 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
                   <button
                     type="button"
                     onClick={() => setAttending('no')}
-                    className={`py-3 rounded-xl border text-xs uppercase tracking-[0.18em] transition-all ${
+                    className={`min-h-[48px] py-3 px-2 rounded-xl border text-xs uppercase tracking-[0.14em] transition-all active:scale-95 ${
                       attending === 'no'
                         ? 'bg-[#184d73] border-[#dab87b] text-white'
                         : 'bg-white/[0.05] border-white/15 text-white/70'
@@ -169,14 +169,14 @@ export const RsvpSection: React.FC<RsvpSectionProps> = ({ config }) => {
                   placeholder="Write a warm note for the couple..."
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.06] border border-white/15 text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#dab87b] resize-none"
+                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.06] border border-white/15 text-base md:text-sm text-white placeholder:text-white/35 focus:outline-none focus:border-[#dab87b] resize-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#184d73] via-[#246d9e] to-[#184d73] border border-[#dab87b]/70 text-xs uppercase tracking-[0.28em] text-white font-display hover:scale-[1.01] transition-all"
+                className="w-full min-h-[52px] inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#184d73] via-[#246d9e] to-[#184d73] border border-[#dab87b]/70 text-xs uppercase tracking-[0.28em] text-white font-display active:scale-[0.98] hover:scale-[1.01] transition-all"
               >
                 <Send className="w-3.5 h-3.5 text-[#dab87b]" />
                 <span>{isSubmitting ? 'Sending...' : 'Confirm Attendance'}</span>

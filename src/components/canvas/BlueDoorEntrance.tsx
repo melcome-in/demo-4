@@ -217,6 +217,33 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
       yMin + H / 2
     );
 
+    // Seamless Top & Bottom Extensions so tall mobile portrait screens never show dark bars
+    const capW = W + outerWingW * 2;
+    const capH = 5.0;
+    const topOuterCap = createUVMappedBoxFace(
+      capW,
+      capH,
+      wallDepth,
+      0.02,
+      0.16,
+      0.99,
+      0.88,
+      0,
+      yMax + capH / 2
+    );
+
+    const botOuterCap = createUVMappedBoxFace(
+      capW,
+      capH,
+      wallDepth,
+      0.2,
+      0.8,
+      0.08,
+      0.0,
+      0,
+      yMin - capH / 2
+    );
+
     return {
       leftDoor,
       rightDoor,
@@ -226,6 +253,8 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
       botWall,
       leftOuterWing,
       rightOuterWing,
+      topOuterCap,
+      botOuterCap,
     };
   }, [W, H, xMin, xMax, yMin, yMax, xL, xR, yB, yT, doorW, doorH]);
 
@@ -267,11 +296,17 @@ export const BlueDoorEntrance: React.FC<BlueDoorEntranceProps> = ({
         <meshBasicMaterial map={doorTexture} />
       </mesh>
 
-      {/* Seamless Photographic Stone Extensions on Left & Right for Widescreen Displays */}
+      {/* Seamless Photographic Stone Extensions on Left, Right, Top & Bottom for All Aspect Ratios */}
       <mesh geometry={geometries.leftOuterWing} onClick={blockOutsideWallClick}>
         <meshBasicMaterial map={doorTexture} />
       </mesh>
       <mesh geometry={geometries.rightOuterWing} onClick={blockOutsideWallClick}>
+        <meshBasicMaterial map={doorTexture} />
+      </mesh>
+      <mesh geometry={geometries.topOuterCap} onClick={blockOutsideWallClick}>
+        <meshBasicMaterial map={doorTexture} />
+      </mesh>
+      <mesh geometry={geometries.botOuterCap} onClick={blockOutsideWallClick}>
         <meshBasicMaterial map={doorTexture} />
       </mesh>
 

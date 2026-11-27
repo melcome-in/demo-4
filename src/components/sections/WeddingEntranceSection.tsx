@@ -15,7 +15,7 @@ export const WeddingEntranceSection: React.FC<WeddingEntranceSectionProps> = ({
   return (
     <section
       id="section-entrance"
-      className="relative min-h-screen w-full flex flex-col justify-end items-center pb-20 px-6 md:px-14 pointer-events-none"
+      className="relative min-h-[100dvh] w-full flex flex-col justify-end items-center pb-24 lg:pb-20 px-4 sm:px-6 md:px-14 pointer-events-none"
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}

@@ -40,12 +40,29 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!isDoorOpened) return;
 
-    const lenis = new Lenis({
-      duration: 1.25,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    });
-    lenisRef.current = lenis;
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      (window.matchMedia('(pointer: coarse)').matches ||
+        'ontouchstart' in window);
+
+    // Use native hardware-accelerated momentum scrolling on mobile touch devices; Lenis on desktop wheel
+    let lenis: Lenis | null = null;
+    let rafId = 0;
+
+    if (!isTouchDevice) {
+      lenis = new Lenis({
+        duration: 1.25,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+      });
+      lenisRef.current = lenis;
+
+      const raf = (time: number) => {
+        lenis?.raf(time);
+        rafId = requestAnimationFrame(raf);
+      };
+      rafId = requestAnimationFrame(raf);
+    }
 
     const updateScroll = () => {
       const maxScroll =
@@ -59,17 +76,10 @@ export const App: React.FC = () => {
     window.addEventListener('scroll', updateScroll, { passive: true });
     updateScroll();
 
-    let rafId = 0;
-    const raf = (time: number) => {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    };
-    rafId = requestAnimationFrame(raf);
-
     return () => {
       window.removeEventListener('scroll', updateScroll);
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
+      if (rafId) cancelAnimationFrame(rafId);
+      lenis?.destroy();
       lenisRef.current = null;
     };
   }, [isDoorOpened]);
@@ -157,15 +167,20 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#07131e] text-[#fcfaf5] selection:bg-[#2d8ec8]/40">
-      {/* 1. Fixed Full-Screen Real-Time 3D Blue Door & Destination Canvas */}
-      <div className="fixed inset-0 z-[1]">
+    <div className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#07131e] text-[#fcfaf5] selection:bg-[#2d8ec8]/40">
+      {/* 1. Fixed Full-Screen Real-Time 3D Blue Door Canvas (pauses GPU loop after door opens for 120fps mobile scrolling) */}
+      <div
+        className={`fixed inset-0 h-[100dvh] z-[1] touch-manipulation ${
+          isDoorOpened ? 'pointer-events-none' : ''
+        }`}
+      >
         <Canvas
-          shadows
-          dpr={[1, 1.75]}
+          frameloop={isDoorOpened ? 'demand' : 'always'}
+          dpr={[1, 1.5]}
           camera={{ position: [0, 2.6, 28.2], fov: 46, near: 0.1, far: 250 }}
           gl={{
             antialias: true,
+            powerPreference: 'high-performance',
             toneMapping: THREE.ACESFilmicToneMapping,
             toneMappingExposure: 1.08,
           }}

@@ -16,7 +16,7 @@ export const FinalSunsetSection: React.FC<FinalSunsetSectionProps> = ({
   return (
     <section
       id="section-finale"
-      className="relative py-28 px-6 md:px-14 pointer-events-auto flex items-center justify-center"
+      className="relative py-24 pb-32 lg:pb-28 px-4 sm:px-6 md:px-14 pointer-events-auto flex items-center justify-center"
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}
